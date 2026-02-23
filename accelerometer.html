@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Acelerómetro — Pitch & Roll</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@600;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f5f0e8;
+      --surface: #ede8dd;
+      --border: #d4c9b5;
+      --accent: #5c7a3e;
+      --accent2: #c0392b;
+      --text: #2c2416;
+      --muted: #8a7a62;
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Syne', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    header .logo { font-size: 1.4rem; }
+    header h1 { font-size: 1rem; font-weight: 800; }
+    header h1 span { color: var(--accent); }
+
+    .status-badge {
+      margin-left: auto;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.6rem;
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1.5px solid var(--border);
+      color: var(--muted);
+    }
+
+    .status-badge.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    #arena {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      background: radial-gradient(circle at 50% 40%, #ece6d8, #ddd4be);
+    }
+
+    #arena::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 36px 36px;
+      opacity: 0.35;
+      pointer-events: none;
+    }
+
+    #target {
+      position: absolute;
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #fff 20%, rgba(92,122,62,0.1) 70%);
+      border: 3px dashed var(--accent);
+      transform: translate(-50%, -50%);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.8rem;
+      animation: pulse-target 2s infinite;
+    }
+
+    @keyframes pulse-target {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(92,122,62,0.4); }
+      50%       { box-shadow: 0 0 0 16px rgba(92,122,62,0); }
+    }
+
+    #ball {
+      position: absolute;
+      width: 54px; height: 54px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #e74c3c, #8e1c10);
+      box-shadow: 0 6px 20px rgba(192,57,43,0.5), inset 0 -4px 8px rgba(0,0,0,0.3);
+      transform: translate(-50%, -50%);
+      z-index: 5;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem;
+    }
+
+    #ball.won {
+      background: radial-gradient(circle at 35% 35%, #2ecc71, #1a7a43);
+      box-shadow: 0 6px 24px rgba(46,204,113,0.6);
+      animation: victory 0.5s ease;
+    }
+
+    @keyframes victory {
+      0%   { transform: translate(-50%, -50%) scale(1); }
+      50%  { transform: translate(-50%, -50%) scale(1.6); }
+      100% { transform: translate(-50%, -50%) scale(1); }
+    }
+
+    #panel {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 12px 18px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .data-row { display: flex; gap: 8px; }
+
+    .data-card {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px 12px;
+    }
+
+    .data-card .lbl {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.52rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 3px;
+    }
+
+    .data-card .val {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .data-card .val.green  { color: var(--accent); }
+    .data-card .val.red    { color: var(--accent2); }
+    .data-card .val.orange { color: #e67e22; }
+
+    .progress-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px 12px;
+    }
+
+    .progress-wrap .lbl {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.52rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      white-space: nowrap;
+    }
+
+    .bar { flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 4px; background: var(--accent); transition: width 0.15s, background 0.15s; }
+    .bar-fill.near { background: #e67e22; }
+    .bar-fill.won  { background: #27ae60; }
+
+    #perm-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(245,240,232,0.96);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      z-index: 100;
+      text-align: center;
+      padding: 30px;
+    }
+
+    #perm-overlay h2 { font-size: 1.3rem; font-weight: 800; }
+    #perm-overlay p  { color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
+
+    .btn {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 0.9rem;
+      padding: 12px 28px;
+      border-radius: 30px;
+      border: none;
+      cursor: pointer;
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(92,122,62,0.3);
+    }
+
+    #toast {
+      position: fixed;
+      bottom: 130px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--accent);
+      color: #fff;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 0.9rem;
+      padding: 12px 24px;
+      border-radius: 30px;
+      opacity: 0;
+      transition: all 0.3s;
+      z-index: 999;
+      pointer-events: none;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">📱</div>
+  <h1>Aceler<span>ómetro</span></h1>
+  <div class="status-badge" id="status-badge">INACTIVO</div>
+</header>
+
+<div id="arena">
+  <div id="target">🎯</div>
+  <div id="ball">⚽</div>
+
+  <div id="perm-overlay">
+    <div style="font-size:3rem">📱</div>
+    <h2>Permiso de movimiento</h2>
+    <p>Esta app necesita acceder al acelerómetro para detectar la inclinación del dispositivo.</p>
+    <button class="btn" id="btn-perm">Activar acelerómetro</button>
+  </div>
+</div>
+
+<div id="panel">
+  <div class="progress-wrap">
+    <span class="lbl">Proximidad al destino</span>
+    <div class="bar"><div class="bar-fill" id="bar-fill" style="width:0%"></div></div>
+  </div>
+
+  <div class="data-row">
+    <div class="data-card">
+      <div class="lbl">X (Roll γ)</div>
+      <div class="bar" style="margin-top:4px"><div class="bar-fill" id="acc-x-bar" style="width:50%;background:#c0392b"></div></div>
+      <div class="val red" id="acc-x-val" style="font-size:0.7rem;margin-top:3px">0.0°</div>
+    </div>
+    <div class="data-card">
+      <div class="lbl">Y (Pitch β)</div>
+      <div class="bar" style="margin-top:4px"><div class="bar-fill" id="acc-y-bar" style="width:50%;background:#5c7a3e"></div></div>
+      <div class="val green" id="acc-y-val" style="font-size:0.7rem;margin-top:3px">0.0°</div>
+    </div>
+    <div class="data-card">
+      <div class="lbl">Z (Alpha α)</div>
+      <div class="bar" style="margin-top:4px"><div class="bar-fill" id="acc-z-bar" style="width:50%;background:#2980b9"></div></div>
+      <div class="val" id="acc-z-val" style="font-size:0.7rem;margin-top:3px;color:#2980b9">0.0°</div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  const arena  = document.getElementById('arena');
+  const ball   = document.getElementById('ball');
+  const target = document.getElementById('target');
+  const badge  = document.getElementById('status-badge');
+  const toast  = document.getElementById('toast');
+
+  let ballX, ballY, targetX, targetY, won = false;
+
+  function initPositions() {
+    const w = arena.clientWidth, h = arena.clientHeight;
+    ballX = w / 2; ballY = h / 2;
+    targetX = 60 + Math.random() * (w - 120);
+    targetY = 60 + Math.random() * (h - 120);
+    ball.style.left   = ballX + 'px';
+    ball.style.top    = ballY + 'px';
+    target.style.left = targetX + 'px';
+    target.style.top  = targetY + 'px';
+    ball.classList.remove('won');
+    won = false;
+  }
+
+  function updateBall() {
+    const w = arena.clientWidth, h = arena.clientHeight;
+    ballX = Math.max(27, Math.min(w - 27, ballX));
+    ballY = Math.max(27, Math.min(h - 27, ballY));
+    ball.style.left = ballX + 'px';
+    ball.style.top  = ballY + 'px';
+
+    const dx = targetX - ballX, dy = targetY - ballY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+
+    const maxDist = Math.sqrt(w * w + h * h);
+    const pct = Math.max(0, 100 - (dist / maxDist) * 100);
+    const fill = document.getElementById('bar-fill');
+    fill.style.width = pct + '%';
+    fill.className = 'bar-fill' + (pct > 85 ? ' won' : pct > 60 ? ' near' : '');
+
+    if (dist < 35 && !won) {
+      won = true;
+      ball.classList.add('won');
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      showToast('🎉 ¡Llegaste al destino!');
+      setTimeout(initPositions, 2000);
+    }
+  }
+
+  function startAccel() {
+    badge.textContent = 'ACTIVO';
+    badge.classList.add('active');
+
+    window.addEventListener('deviceorientation', (e) => {
+      const pitch = e.beta  ?? 0;
+      const roll  = e.gamma ?? 0;
+      const alpha = e.alpha ?? 0;
+
+
+
+      // X = roll (-90..90 → 0..100%)
+      const xPct = Math.max(0, Math.min(100, (roll + 90) / 180 * 100));
+      document.getElementById('acc-x-bar').style.width = xPct + '%';
+      document.getElementById('acc-x-val').textContent = roll.toFixed(1) + '°';
+
+      // Y = pitch (-180..180 → 0..100%)
+      const yPct = Math.max(0, Math.min(100, (pitch + 180) / 360 * 100));
+      document.getElementById('acc-y-bar').style.width = yPct + '%';
+      document.getElementById('acc-y-val').textContent = pitch.toFixed(1) + '°';
+
+      // Z = alpha (0..360 → 0..100%)
+      const zPct = (alpha / 360) * 100;
+      document.getElementById('acc-z-bar').style.width = zPct + '%';
+      document.getElementById('acc-z-val').textContent = alpha.toFixed(1) + '°';
+
+      ballX += roll  * 0.4;
+      ballY += pitch * 0.4;
+      updateBall();
+    });
+  }
+
+  document.getElementById('btn-perm').addEventListener('click', async () => {
+    if (typeof DeviceOrientationEvent !== 'undefined' &&
+        typeof DeviceOrientationEvent.requestPermission === 'function') {
+      try {
+        const p = await DeviceOrientationEvent.requestPermission();
+        if (p === 'granted') {
+          document.getElementById('perm-overlay').style.display = 'none';
+          initPositions();
+          startAccel();
+        }
+      } catch(e) {}
+    } else {
+      document.getElementById('perm-overlay').style.display = 'none';
+      initPositions();
+      startAccel();
+    }
+  });
+
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2500);
+  }
+
+  // Android/Desktop: sin permiso necesario
+  if (typeof DeviceOrientationEvent === 'undefined' ||
+      typeof DeviceOrientationEvent.requestPermission !== 'function') {
+    document.getElementById('perm-overlay').style.display = 'none';
+    initPositions();
+    startAccel();
+  }
+</script>
+</body>
+</html>
