@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+    <title>GeoAlert — Aviso de proximidad</title>
+
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet" />
+
+    <style>
+        :root {
+          --bg: #f5f0e8;
+          --surface: #ede8dd;
+          --border: #d4c9b5;
+          --accent: #5c7a3e;
+          --accent2: #c0392b;
+          --text: #2c2416;
+          --muted: #8a7a62;
+          --success: #27ae60;
+          --warning: #e67e22;
+          --radius: 12px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+          font-family: 'Syne', sans-serif;
+          background: var(--bg);
+          color: var(--text);
+          height: 100dvh;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+
+        /* ── Header ── */
+        header {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 14px 18px;
+          background: var(--surface);
+          border-bottom: 1px solid var(--border);
+          z-index: 1000;
+          flex-shrink: 0;
+        }
+
+        header .logo {
+          width: 36px; height: 36px;
+          background: var(--accent);
+          border-radius: 8px;
+          display: grid; place-items: center;
+          font-size: 18px;
+          flex-shrink: 0;
+        }
+
+        header h1 {
+          font-size: 1.1rem;
+          font-weight: 800;
+          letter-spacing: -0.5px;
+        }
+
+        header h1 span { color: var(--accent); }
+
+        .status-badge {
+          margin-left: auto;
+          font-family: 'Space Mono', monospace;
+          font-size: 0.65rem;
+          padding: 4px 10px;
+          border-radius: 20px;
+          border: 1px solid var(--border);
+          color: var(--muted);
+          white-space: nowrap;
+        }
+
+        .status-badge.active {
+          border-color: var(--success);
+          color: var(--success);
+          animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+
+        /* ── Map ── */
+        #map {
+          flex: 1;
+          width: 100%;
+          cursor: crosshair;
+        }
+
+        /* ── Panel inferior ── */
+        #panel {
+          background: var(--surface);
+          border-top: 1px solid var(--border);
+          padding: 14px 18px;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          flex-shrink: 0;
+        }
+
+        .panel-row {
+          display: flex;
+          gap: 10px;
+          align-items: center;
+        }
+
+        .info-card {
+          flex: 1;
+          background: var(--bg);
+          border: 1px solid var(--border);
+          border-radius: var(--radius);
+          padding: 10px 14px;
+        }
+
+        .info-card .label {
+          font-family: 'Space Mono', monospace;
+          font-size: 0.6rem;
+          color: var(--muted);
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          margin-bottom: 4px;
+        }
+
+        .info-card .value {
+          font-size: 0.95rem;
+          font-weight: 700;
+          color: var(--text);
+        }
+
+        .info-card .value.highlight { color: var(--accent); }
+        .info-card .value.near { color: var(--success); }
+        .info-card .value.far { color: var(--muted); }
+
+        /* Slider radio */
+        .slider-wrap {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          background: var(--bg);
+          border: 1px solid var(--border);
+          border-radius: var(--radius);
+          padding: 10px 14px;
+        }
+
+        .slider-wrap .label {
+          font-family: 'Space Mono', monospace;
+          font-size: 0.6rem;
+          color: var(--muted);
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          white-space: nowrap;
+        }
+
+        input[type=range] {
+          flex: 1;
+          accent-color: var(--accent);
+          cursor: pointer;
+        }
+
+        .slider-wrap .val {
+          font-family: 'Space Mono', monospace;
+          font-size: 0.75rem;
+          color: var(--accent);
+          min-width: 48px;
+          text-align: right;
+        }
+
+        /* Botones */
+        .btn {
+          font-family: 'Syne', sans-serif;
+          font-weight: 700;
+          font-size: 0.8rem;
+          padding: 10px 16px;
+          border-radius: var(--radius);
+          border: none;
+          cursor: pointer;
+          transition: all 0.15s;
+          white-space: nowrap;
+        }
+
+        .btn-primary {
+          background: var(--accent);
+          color: #000;
+        }
+
+        .btn-primary:hover { filter: brightness(1.15); }
+        .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .btn-danger {
+          background: transparent;
+          border: 1px solid var(--accent2);
+          color: var(--accent2);
+        }
+
+        .btn-danger:hover { background: var(--accent2); color: #fff; }
+        .btn-danger:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        /* ── Notificación toast ── */
+        #toast {
+          position: fixed;
+          bottom: 80px;
+          left: 50%;
+          transform: translateX(-50%) translateY(20px);
+          background: var(--success);
+          color: #fff;
+          font-family: 'Syne', sans-serif;
+          font-weight: 700;
+          font-size: 0.85rem;
+          padding: 12px 22px;
+          border-radius: 30px;
+          box-shadow: 0 4px 30px rgba(0, 230, 118, 0.4);
+          opacity: 0;
+          transition: all 0.3s ease;
+          z-index: 9999;
+          pointer-events: none;
+          text-align: center;
+          max-width: 90vw;
+        }
+
+        #toast.show {
+          opacity: 1;
+          transform: translateX(-50%) translateY(0);
+        }
+
+        /* ── Hint ── */
+        #hint {
+          position: absolute;
+          top: 70px;
+          left: 50%;
+          transform: translateX(-50%);
+          background: rgba(10,14,26,0.88);
+          border: 1px solid var(--border);
+          color: var(--muted);
+          font-family: 'Space Mono', monospace;
+          font-size: 0.65rem;
+          padding: 6px 14px;
+          border-radius: 20px;
+          z-index: 500;
+          pointer-events: none;
+          backdrop-filter: blur(8px);
+          white-space: nowrap;
+        }
+
+        /* Leaflet overrides */
+        .leaflet-container { background: #aad3df; }
+
+        .destination-icon div {
+          width: 28px; height: 28px;
+          background: var(--accent2);
+          border: 3px solid #fff;
+          border-radius: 50% 50% 50% 0;
+          transform: rotate(-45deg);
+          box-shadow: 0 2px 12px rgba(255,64,129,0.5);
+        }
+
+        .user-icon div {
+          width: 18px; height: 18px;
+          background: var(--accent);
+          border: 3px solid #fff;
+          border-radius: 50%;
+          box-shadow: 0 0 12px var(--accent);
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo">📍</div>
+    <h1>Geo<span>Alert</span></h1>
+    <div class="status-badge" id="gps-badge">GPS INACTIVO</div>
+</header>
+
+<div id="hint">Toca el mapa para fijar tu destino</div>
+<div id="map"></div>
+
+<div id="panel">
+    <div class="panel-row">
+        <div class="info-card">
+            <div class="label">Mi posición</div>
+            <div class="value far" id="my-pos">—</div>
+        </div>
+        <div class="info-card">
+            <div class="label">Destino</div>
+            <div class="value highlight" id="dest-pos">Sin fijar</div>
+        </div>
+    </div>
+
+    <div class="slider-wrap">
+        <span class="label">Radio alerta</span>
+        <input type="range" id="radius-slider" min="50" max="2000" step="50" value="300" />
+        <span class="val" id="radius-val">300 m</span>
+    </div>
+
+    <div class="panel-row">
+        <div class="info-card">
+            <div class="label">Distancia al destino</div>
+            <div class="value far" id="distance">—</div>
+        </div>
+        <button class="btn btn-danger" id="btn-clear" disabled>Limpiar</button>
+        <button class="btn btn-primary" id="btn-start" disabled>Activar</button>
+    </div>
+</div>
+
+<div id="toast">🎯 ¡Has llegado a tu destino!</div>
+
+<script>
+    // ── Mapa ──
+    const map = L.map('map', { zoomControl: true }).setView([40.416775, -3.703790], 13);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+      maxZoom: 19
+    }).addTo(map);
+
+    // ── Estado ──
+    let destMarker = null;
+    let userMarker = null;
+    let radiusCircle = null;
+    let watchId = null;
+    let alertRadius = 300;
+    let alreadyNotified = false;
+    let tracking = false;
+
+    // ── UI refs ──
+    const btnStart = document.getElementById('btn-start');
+    const btnClear = document.getElementById('btn-clear');
+    const radiusSlider = document.getElementById('radius-slider');
+    const radiusVal = document.getElementById('radius-val');
+    const myPosEl = document.getElementById('my-pos');
+    const destPosEl = document.getElementById('dest-pos');
+    const distanceEl = document.getElementById('distance');
+    const gpsBadge = document.getElementById('gps-badge');
+    const toast = document.getElementById('toast');
+    const hint = document.getElementById('hint');
+
+    // ── Iconos ──
+    const destIcon = L.divIcon({ className: 'destination-icon', html: '<div></div>', iconSize: [28,28], iconAnchor: [14,28] });
+    const userIcon = L.divIcon({ className: 'user-icon', html: '<div></div>', iconSize: [18,18], iconAnchor: [9,9] });
+
+    // ── Fijar destino al tocar el mapa ──
+    map.on('click', (e) => {
+      const { lat, lng } = e.latlng;
+
+      if (destMarker) map.removeLayer(destMarker);
+      if (radiusCircle) map.removeLayer(radiusCircle);
+
+      destMarker = L.marker([lat, lng], { icon: destIcon }).addTo(map)
+        .bindPopup(`<b>Destino</b><br>${lat.toFixed(5)}, ${lng.toFixed(5)}`).openPopup();
+
+      radiusCircle = L.circle([lat, lng], {
+        radius: alertRadius,
+        color: '#ff4081',
+        fillColor: '#ff4081',
+        fillOpacity: 0.08,
+        weight: 1.5,
+        dashArray: '6 4'
+      }).addTo(map);
+
+      destPosEl.textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      hint.style.display = 'none';
+      btnStart.disabled = false;
+      btnClear.disabled = false;
+      alreadyNotified = false;
+    });
+
+    // ── Slider radio ──
+    radiusSlider.addEventListener('input', () => {
+      alertRadius = parseInt(radiusSlider.value);
+      radiusVal.textContent = alertRadius >= 1000
+        ? (alertRadius / 1000).toFixed(1) + ' km'
+        : alertRadius + ' m';
+
+      if (radiusCircle) radiusCircle.setRadius(alertRadius);
+    });
+
+    // ── Botón Activar / Detener ──
+    btnStart.addEventListener('click', () => {
+      if (!tracking) startTracking();
+      else stopTracking();
+    });
+
+    // ── Botón Limpiar ──
+    btnClear.addEventListener('click', clearAll);
+
+    function startTracking() {
+      if (!navigator.geolocation) {
+        showToast('❌ Geolocalización no disponible', '#ff4081');
+        return;
+      }
+
+      tracking = true;
+      alreadyNotified = false;
+      btnStart.textContent = 'Detener';
+      btnStart.style.background = 'var(--accent2)';
+      gpsBadge.textContent = 'GPS ACTIVO';
+      gpsBadge.classList.add('active');
+
+      watchId = navigator.geolocation.watchPosition(onPosition, onError, {
+        enableHighAccuracy: true,
+        maximumAge: 5000,
+        timeout: 15000
+      });
+    }
+
+    function stopTracking() {
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+      watchId = null;
+      tracking = false;
+      btnStart.textContent = 'Activar';
+      btnStart.style.background = '';
+      gpsBadge.textContent = 'GPS INACTIVO';
+      gpsBadge.classList.remove('active');
+    }
+
+    function clearAll() {
+      stopTracking();
+      if (destMarker) { map.removeLayer(destMarker); destMarker = null; }
+      if (userMarker) { map.removeLayer(userMarker); userMarker = null; }
+      if (radiusCircle) { map.removeLayer(radiusCircle); radiusCircle = null; }
+      destPosEl.textContent = 'Sin fijar';
+      myPosEl.textContent = '—';
+      distanceEl.textContent = '—';
+      distanceEl.className = 'value far';
+      btnStart.disabled = true;
+      btnClear.disabled = true;
+      hint.style.display = '';
+      alreadyNotified = false;
+    }
+
+    function onPosition(pos) {
+      const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+
+      // Actualizar marcador usuario
+      if (!userMarker) {
+        userMarker = L.marker([lat, lng], { icon: userIcon }).addTo(map)
+          .bindPopup('📍 Tú estás aquí');
+      } else {
+        userMarker.setLatLng([lat, lng]);
+      }
+
+      myPosEl.textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+
+      // Calcular distancia
+      if (destMarker) {
+        const destLatLng = destMarker.getLatLng();
+        const dist = map.distance([lat, lng], destLatLng);
+        const distText = dist >= 1000
+          ? (dist / 1000).toFixed(2) + ' km'
+          : Math.round(dist) + ' m';
+
+        distanceEl.textContent = distText;
+
+        if (dist <= alertRadius) {
+          distanceEl.className = 'value near';
+          if (!alreadyNotified) {
+            alreadyNotified = true;
+            triggerAlert();
+          }
+        } else {
+          distanceEl.className = 'value far';
+          alreadyNotified = false;
+        }
+      }
+    }
+
+    function onError(err) {
+      gpsBadge.textContent = 'ERROR GPS';
+      gpsBadge.classList.remove('active');
+      showToast('⚠️ ' + err.message, '#ffea00');
+    }
+
+    function triggerAlert() {
+      // Notificación visual
+      showToast('🎯 ¡Has llegado a tu destino!', 'var(--success)');
+
+      // Vibración (móvil)
+      if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 600]);
+
+      // Notificación del sistema (si tiene permiso)
+      if ('Notification' in window) {
+        if (Notification.permission === 'granted') {
+          new Notification('GeoAlert', { body: '¡Has llegado a tu destino!', icon: '📍' });
+        } else if (Notification.permission !== 'denied') {
+          Notification.requestPermission().then(perm => {
+            if (perm === 'granted') {
+              new Notification('GeoAlert', { body: '¡Has llegado a tu destino!', icon: '📍' });
+            }
+          });
+        }
+      }
+    }
+
+    function showToast(msg, color = 'var(--success)') {
+      toast.textContent = msg;
+      toast.style.background = color;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 4000);
+    }
+
+    // Pedir permiso notificaciones al arrancar
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+</script>
+</body>
+</html>
