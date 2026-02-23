@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Multi-touch — Pinch & Rotate</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@600;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f5f0e8;
+      --surface: #ede8dd;
+      --border: #d4c9b5;
+      --accent: #5c7a3e;
+      --accent2: #c0392b;
+      --text: #2c2416;
+      --muted: #8a7a62;
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Syne', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      user-select: none;
+      touch-action: none;
+    }
+
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    header .logo { font-size: 1.4rem; }
+    header h1 { font-size: 1rem; font-weight: 800; }
+    header h1 span { color: var(--accent); }
+
+    .btn-reset {
+      margin-left: auto;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 0.65rem;
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1.5px solid var(--accent2);
+      background: transparent;
+      color: var(--accent2);
+      cursor: pointer;
+    }
+
+    /* Arena */
+    #arena {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      background: radial-gradient(circle at 50% 40%, #ece6d8, #ddd4be);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      touch-action: none;
+    }
+
+    #arena::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 36px 36px;
+      opacity: 0.35;
+      pointer-events: none;
+    }
+
+    /* Imagen interactiva */
+    #img-wrap {
+      position: absolute;
+      width: 180px;
+      height: 180px;
+      cursor: grab;
+      will-change: transform;
+    }
+
+    #img-wrap:active { cursor: grabbing; }
+
+    #img-wrap .card {
+      width: 100%; height: 100%;
+      background: var(--surface);
+      border: 3px solid var(--border);
+      border-radius: 20px;
+      box-shadow: 0 12px 40px rgba(44,36,22,0.18);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 6rem;
+      transition: box-shadow 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #img-wrap .card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.25) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    #img-wrap.touching .card {
+      box-shadow: 0 20px 60px rgba(44,36,22,0.28);
+    }
+
+    /* Indicadores de dedos */
+    .finger-dot {
+      position: absolute;
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 50;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.6rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .finger-dot.f1 { background: rgba(192,57,43,0.7); border: 2px solid var(--accent2); }
+    .finger-dot.f2 { background: rgba(92,122,62,0.7); border: 2px solid var(--accent); }
+
+    /* Línea entre dedos */
+    #finger-line {
+      position: absolute;
+      pointer-events: none;
+      z-index: 49;
+    }
+
+    /* Panel */
+    #panel {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 12px 18px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .data-row { display: flex; gap: 8px; }
+
+    .data-card {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px 12px;
+    }
+
+    .data-card .lbl {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.52rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 3px;
+    }
+
+    .data-card .val {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .data-card .val.green { color: var(--accent); }
+    .data-card .val.red   { color: var(--accent2); }
+    .data-card .val.blue  { color: #2980b9; }
+    .data-card .val.orange { color: #e67e22; }
+
+    /* Hint */
+    #hint {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(44,36,22,0.72);
+      color: #fff;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.6rem;
+      padding: 6px 16px;
+      border-radius: 20px;
+      pointer-events: none;
+      backdrop-filter: blur(6px);
+      white-space: nowrap;
+      z-index: 10;
+      transition: opacity 0.4s;
+    }
+
+    #hint.hidden { opacity: 0; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">✋</div>
+  <h1>Multi<span>touch</span></h1>
+  <button class="btn-reset" id="btn-reset">Reiniciar</button>
+</header>
+
+<div id="arena">
+  <div id="img-wrap">
+    <div class="card" id="card">🌍</div>
+  </div>
+  <canvas id="finger-line"></canvas>
+  <div id="hint">1 dedo: mover · 2 dedos: zoom y rotar</div>
+</div>
+
+<div id="panel">
+  <div class="data-row">
+    <div class="data-card">
+      <div class="lbl">Escala</div>
+      <div class="val green" id="val-scale">1.00×</div>
+    </div>
+    <div class="data-card">
+      <div class="lbl">Rotación</div>
+      <div class="val red" id="val-rotate">0°</div>
+    </div>
+    <div class="data-card">
+      <div class="lbl">Distancia pinch</div>
+      <div class="val blue" id="val-pinch">—</div>
+    </div>
+    <div class="data-card">
+      <div class="lbl">Dedos</div>
+      <div class="val orange" id="val-fingers">0</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── Estado imagen ──
+  let posX = 0, posY = 0;
+  let scale = 1, rotation = 0;
+  let startPosX = 0, startPosY = 0;
+  let lastDist = null, lastAngle = null;
+  let startTouchX = 0, startTouchY = 0;
+
+  const imgWrap = document.getElementById('img-wrap');
+  const arena   = document.getElementById('arena');
+  const canvas  = document.getElementById('finger-line');
+  const ctx     = canvas.getContext('2d');
+  const hint    = document.getElementById('hint');
+
+  let hintHidden = false;
+
+  function resizeCanvas() {
+    canvas.width  = arena.clientWidth;
+    canvas.height = arena.clientHeight;
+  }
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  function applyTransform() {
+    imgWrap.style.transform =
+      `translate(calc(-50% + ${posX}px), calc(-50% + ${posY}px)) ` +
+      `scale(${scale}) rotate(${rotation}deg)`;
+    imgWrap.style.left = '50%';
+    imgWrap.style.top  = '50%';
+
+    document.getElementById('val-scale').textContent  = scale.toFixed(2) + '×';
+    document.getElementById('val-rotate').textContent = Math.round(((rotation % 360) + 360) % 360) + '°';
+  }
+
+  function getTouchDist(t1, t2) {
+    const dx = t1.clientX - t2.clientX;
+    const dy = t1.clientY - t2.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  function getTouchAngle(t1, t2) {
+    return Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX) * 180 / Math.PI;
+  }
+
+  function drawFingerLine(t1, t2) {
+    const rect = arena.getBoundingClientRect();
+    const x1 = t1.clientX - rect.left, y1 = t1.clientY - rect.top;
+    const x2 = t2.clientX - rect.left, y2 = t2.clientY - rect.top;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Línea
+    ctx.beginPath();
+    ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = 'rgba(44,36,22,0.3)';
+    ctx.lineWidth = 2;
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+
+    // Punto dedo 1
+    ctx.beginPath();
+    ctx.arc(x1, y1, 18, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(192,57,43,0.65)';
+    ctx.fill();
+    ctx.strokeStyle = '#c0392b';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([]);
+    ctx.stroke();
+
+    // Punto dedo 2
+    ctx.beginPath();
+    ctx.arc(x2, y2, 18, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(92,122,62,0.65)';
+    ctx.fill();
+    ctx.strokeStyle = '#5c7a3e';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Midpoint
+    const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+    ctx.beginPath();
+    ctx.arc(mx, my, 5, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(44,36,22,0.4)';
+    ctx.fill();
+  }
+
+  function clearCanvas() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  // ── Touch events ──
+  arena.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const n = e.touches.length;
+    document.getElementById('val-fingers').textContent = n;
+
+    if (!hintHidden) { hint.classList.add('hidden'); hintHidden = true; }
+    imgWrap.classList.add('touching');
+
+    if (n === 1) {
+      startTouchX = e.touches[0].clientX - posX;
+      startTouchY = e.touches[0].clientY - posY;
+    }
+
+    if (n === 2) {
+      lastDist  = getTouchDist(e.touches[0], e.touches[1]);
+      lastAngle = getTouchAngle(e.touches[0], e.touches[1]);
+    }
+  }, { passive: false });
+
+  arena.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    const n = e.touches.length;
+    document.getElementById('val-fingers').textContent = n;
+
+    if (n === 1) {
+      posX = e.touches[0].clientX - startTouchX;
+      posY = e.touches[0].clientY - startTouchY;
+      clearCanvas();
+    }
+
+    if (n >= 2) {
+      const t1 = e.touches[0], t2 = e.touches[1];
+      const dist  = getTouchDist(t1, t2);
+      const angle = getTouchAngle(t1, t2);
+
+      if (lastDist !== null) {
+        scale *= dist / lastDist;
+        scale = Math.max(0.2, Math.min(6, scale));
+      }
+
+      if (lastAngle !== null) {
+        rotation += angle - lastAngle;
+      }
+
+      lastDist  = dist;
+      lastAngle = angle;
+
+      document.getElementById('val-pinch').textContent = Math.round(dist) + ' px';
+      drawFingerLine(t1, t2);
+    }
+
+    applyTransform();
+  }, { passive: false });
+
+  arena.addEventListener('touchend', (e) => {
+    const n = e.touches.length;
+    document.getElementById('val-fingers').textContent = n;
+    if (n < 2) { lastDist = null; lastAngle = null; clearCanvas(); }
+    if (n === 0) {
+      imgWrap.classList.remove('touching');
+      document.getElementById('val-pinch').textContent = '—';
+    }
+    if (n === 1) {
+      startTouchX = e.touches[0].clientX - posX;
+      startTouchY = e.touches[0].clientY - posY;
+    }
+  });
+
+  // ── Reiniciar ──
+  document.getElementById('btn-reset').addEventListener('click', () => {
+    posX = 0; posY = 0; scale = 1; rotation = 0;
+    applyTransform();
+  });
+
+</script>
+</body>
+</html>
