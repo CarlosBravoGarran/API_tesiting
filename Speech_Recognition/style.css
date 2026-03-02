@@ -1,0 +1,285 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+/* ── Variables ─────────────────────────────────────────── */
+:root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --border: #2a2a3a;
+    --accent: #e8ff47;
+    --accent2: #ff6b35;
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+    --error: #ff4560;
+    --font-display: 'Syne', sans-serif;
+    --font-mono: 'Space Mono', monospace;
+}
+
+/* ── Reset & Base ──────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-display);
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* ── Background grid ───────────────────────────────────── */
+.bg-grid {
+    position: fixed;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(232,255,71,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(232,255,71,0.03) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* ── Header ────────────────────────────────────────────── */
+header {
+    position: relative;
+    z-index: 1;
+    padding: 3rem 3rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.tag {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    background: rgba(232,255,71,0.1);
+    padding: 4px 10px;
+    border: 1px solid rgba(232,255,71,0.3);
+    display: inline-block;
+    margin-bottom: 1rem;
+}
+
+h1 {
+    font-size: clamp(2rem, 4vw, 3.5rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+}
+
+h1 em {
+    font-style: normal;
+    color: var(--accent);
+    -webkit-text-stroke: 1px var(--accent);
+}
+
+/* ── Main layout ───────────────────────────────────────── */
+main {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 2rem;
+    padding: 2rem 3rem;
+    max-width: 1200px;
+}
+
+/* ── Video ─────────────────────────────────────────────── */
+.video-wrapper {
+    position: relative;
+    background: #000;
+    border: 1px solid var(--border);
+    overflow: hidden;
+}
+
+.video-wrapper::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border: 1px solid var(--accent);
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 2;
+}
+
+video {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16/9;
+    object-fit: contain;
+}
+
+.video-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 5rem;
+    background: rgba(0,0,0,0.45);
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    transform: scale(0.8);
+    transition: opacity 0.15s, transform 0.15s;
+    pointer-events: none;
+    z-index: 3;
+}
+
+.video-overlay.visible {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* ── Controls panel ────────────────────────────────────── */
+.controls-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* Status bar */
+.status-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1rem 1.2rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.8rem;
+}
+
+.indicator {
+    flex-shrink: 0;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--muted);
+    margin-top: 5px;
+    transition: background 0.3s;
+}
+
+.indicator.listening {
+    background: var(--accent);
+    animation: pulse 1s ease-in-out infinite;
+}
+
+.indicator.error {
+    background: var(--error);
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.4); }
+}
+
+#log {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: var(--text);
+}
+
+/* Button */
+button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    width: 100%;
+    padding: 0.9rem 1.5rem;
+    background: var(--accent);
+    color: #0a0a0f;
+    border: none;
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+}
+
+button svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+button:hover {
+    background: #f5ff70;
+}
+
+button:active {
+    transform: scale(0.98);
+}
+
+button.active {
+    background: var(--accent2);
+    color: #fff;
+}
+
+/* Commands guide */
+#commands {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1.2rem;
+    flex: 1;
+}
+
+#commands h2,
+.gesture-info h2 {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.8rem;
+}
+
+.gesture-info {
+    margin-top: 1.2rem;
+    padding-top: 1.2rem;
+    border-top: 1px solid var(--border);
+}
+
+#commands ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+#commands li {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+kbd {
+    background: rgba(232,255,71,0.12);
+    color: var(--accent);
+    border: 1px solid rgba(232,255,71,0.3);
+    padding: 2px 8px;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
+.gesture-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: rgba(255,107,53,0.15);
+    color: var(--accent2);
+    border: 1px solid rgba(255,107,53,0.3);
+    font-size: 0.75rem;
+    flex-shrink: 0;
+}
+
+/* ── Responsive ────────────────────────────────────────── */
+@media (max-width: 768px) {
+    header { padding: 2rem 1.5rem 1.2rem; }
+    main {
+        grid-template-columns: 1fr;
+        padding: 1.5rem;
+    }
+}

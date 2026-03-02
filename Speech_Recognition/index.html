@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Video con Voz y Gestos</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+    <div class="bg-grid"></div>
+
+    <header>
+        <h1>Control de Video<br><em>con Voz y Gestos</em></h1>
+    </header>
+
+    <main>
+        <div class="video-wrapper">
+            <video id="video" controls>
+                <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
+                Tu navegador no soporta videos.
+            </video>
+            <div class="video-overlay" id="videoOverlay"></div>
+        </div>
+
+        <div class="controls-panel">
+            <div class="status-bar">
+                <span class="indicator" id="indicator"></span>
+                <p id="log">Pulsa el botón para activar el reconocimiento de voz.</p>
+            </div>
+
+            <button id="startBtn" onclick="startRecognition()">
+                Iniciar Reconocimiento de Voz
+            </button>
+
+            <div id="commands">
+                <h2>Comandos disponibles</h2>
+                <ul>
+                    <li><kbd>Reproducir</kbd> → Inicia el video</li>
+                    <li><kbd>Pausar</kbd> → Pausa el video</li>
+                    <li><kbd>Subir</kbd> → Aumenta el volumen</li>
+                    <li><kbd>Bajar</kbd> → Reduce el volumen</li>
+                </ul>
+                <div class="gesture-info">
+                    <h2>Gestos del dispositivo</h2>
+                    <ul>
+                        <li><span class="gesture-icon">↗</span> Inclinar derecha → Adelantar 5s</li>
+                        <li><span class="gesture-icon">↙</span> Inclinar izquierda → Retroceder 5s</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="script.js" defer></script>
+</body>
+
+</html>
